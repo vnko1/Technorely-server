@@ -3,8 +3,9 @@ import {
   BadRequestException,
   ArgumentMetadata,
 } from "@nestjs/common";
+import { ZodSchema, ZodError } from "zod";
 
-type SchemaType<T> = T; //* Add schema validator (type SchemaType<T> = ZodSchema<T>)
+type SchemaType<T> = ZodSchema<T>;
 type ValidationType = "body" | "query" | "param" | "custom";
 
 export class CustomValidationPipe<T> implements PipeTransform {
@@ -16,13 +17,15 @@ export class CustomValidationPipe<T> implements PipeTransform {
   transform(value: any, metadata: ArgumentMetadata) {
     try {
       if (metadata.type === this.type) {
-        //* Add validation logic
-        return value as T;
+        return this.schema.parse(value);
       }
 
       return value as unknown;
     } catch (error) {
-      //* Add validation error handler
+      if (error instanceof ZodError) {
+        throw new BadRequestException(error.errors[0].message);
+      }
+
       throw new BadRequestException("Validation failed:" + " " + error);
     }
   }

@@ -1,103 +1,68 @@
-// * SEQUELIZE
-// export abstract class InstanceService<TModel extends Model>
-//   implements InstanceInterface<TModel>
-// {
-//   constructor(private readonly model: ModelStatic<TModel>) {
-//     super();
-//   }
+import {
+  FindManyOptions,
+  FindOneOptions,
+  FindOptionsWhere,
+  ObjectLiteral,
+  RemoveOptions,
+  Repository,
+  SaveOptions,
+} from "typeorm";
+import { CriteriaType, EntityType, InstanceInterface } from "./instance.types";
 
-//   add(data: any, opt?: CreateOptions): Promise<TModel> {
-//     return this.model.create(data, opt);
-//   }
+export abstract class InstanceService<T extends ObjectLiteral>
+  implements InstanceInterface<T>
+{
+  constructor(private readonly repository: Repository<T>) {}
 
-//   edit<T extends object>(
-//     data: T,
-//     opt: UpdateOptions,
-//   ): Promise<[affectedCount: number]> {
-//     return this.model.update(data, opt);
-//   }
+  findAll(options?: FindManyOptions) {
+    return this.repository.find(options);
+  }
 
-//   delete(opt: DestroyOptions): Promise<number> {
-//     return this.model.destroy(opt);
-//   }
+  findAllBy(where: FindOptionsWhere<T> | FindOptionsWhere<T>[]) {
+    return this.repository.findBy(where);
+  }
 
-//   findByPk<M extends string | number>(
-//     pk: M,
-//     opt?: FindOptions,
-//   ): Promise<TModel> {
-//     return this.model.findByPk(pk, opt);
-//   }
+  findOneBy(where: FindOptionsWhere<T> | FindOptionsWhere<T>[]) {
+    return this.repository.findOneBy(where);
+  }
 
-//   findOne(opt?: FindOptions): Promise<TModel> {
-//     return this.model.findOne(opt);
-//   }
+  findOne(where: FindOneOptions<T>) {
+    return this.repository.findOne(where);
+  }
 
-//   findAll(opt?: FindOptions): Promise<TModel[]> {
-//     return this.model.findAll(opt);
-//   }
+  findAllAndCount(where: FindOptionsWhere<T> | FindOptionsWhere<T>[]) {
+    return this.repository.findAndCountBy(where);
+  }
 
-//   findAndCountAll(
-//     opt?: Omit<FindAndCountOptions<any>, 'group'>,
-//   ): Promise<{ rows: TModel[]; count: number }> {
-//     return this.model.findAndCountAll(opt);
-//   }
-// }
+  save(entity: T, opt?: SaveOptions) {
+    return this.repository.save(entity, opt);
+  }
 
-// * TYPEORM
-// export abstract class InstanceService<T extends ObjectLiteral>
-//   implements InstanceInterface<T>
-// {
-//   constructor(private readonly repository: Repository<T>) {}
+  create(data: T) {
+    return this.repository.create(data);
+  }
 
-//   findAll(options?: FindManyOptions) {
-//     return this.repository.find(options);
-//   }
+  update(criteria: CriteriaType<T>, entity: EntityType<T>) {
+    return this.repository.update(criteria, entity);
+  }
 
-//   findAllBy(where: FindOptionsWhere<T> | FindOptionsWhere<T>[]) {
-//     return this.repository.findBy(where);
-//   }
+  delete(criteria: CriteriaType<T>) {
+    return this.repository.delete(criteria);
+  }
 
-//   findOneBy(where: FindOptionsWhere<T> | FindOptionsWhere<T>[]) {
-//     return this.repository.findOneBy(where);
-//   }
+  softDelete(criteria: CriteriaType<T>) {
+    return this.repository.softDelete(criteria);
+  }
 
-//   findOne(where: FindOneOptions<T>) {
-//     return this.repository.findOne(where);
-//   }
+  remove(entities: T[], opt?: RemoveOptions) {
+    return this.repository.remove([...entities], opt);
+  }
 
-//   findAllAndCount(where: FindOptionsWhere<T> | FindOptionsWhere<T>[]) {
-//     return this.repository.findAndCountBy(where);
-//   }
+  softRemove(entities: T[], opt?: SaveOptions) {
+    return this.repository.softRemove([...entities], opt);
+  }
 
-//   save(entity: T, opt?: SaveOptions) {
-//     return this.repository.save(entity, opt);
-//   }
-
-//   create(data: T) {
-//     return this.repository.create(data);
-//   }
-
-//   update(criteria: CriteriaType<T>, entity: EntityType<T>) {
-//     return this.repository.update(criteria, entity);
-//   }
-
-//   delete(criteria: CriteriaType<T>) {
-//     return this.repository.delete(criteria);
-//   }
-
-//   softDelete(criteria: CriteriaType<T>) {
-//     return this.repository.softDelete(criteria);
-//   }
-
-//   remove(entities: T[], opt?: RemoveOptions) {
-//     return this.repository.remove([...entities], opt);
-//   }
-
-//   softRemove(entities: T[], opt?: SaveOptions) {
-//     return this.repository.softRemove([...entities], opt);
-//   }
-
-//   restore(criteria: CriteriaType<T>) {
-//     return this.repository.restore(criteria);
-//   }
-// }
+  restore(criteria: CriteriaType<T>) {
+    return this.repository.restore(criteria);
+  }
+}
