@@ -21,8 +21,8 @@ export class UserEntity {
   @Column({ default: Role.User })
   role: Role;
 
-  @Column({ nullable: true })
-  avatar: string;
+  @Column({ nullable: true, type: "varchar" })
+  avatar: string | null;
 
   @Exclude()
   @Column({ type: "varchar", nullable: true })

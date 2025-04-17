@@ -1,21 +1,29 @@
 import {
-  BadRequestException,
   Body,
   Controller,
-  FileTypeValidator,
+  Delete,
   Get,
-  MaxFileSizeValidator,
-  ParseFilePipe,
+  HttpStatus,
+  ParseFilePipeBuilder,
   Patch,
   Post,
+  Put,
   UploadedFile,
   UseInterceptors,
   UsePipes,
 } from "@nestjs/common";
-import { Roles, User } from "src/common/decorators";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { diskStorage } from "multer";
 
 import { Role } from "src/types";
+import {
+  MAX_PROFILE_PICTURE_SIZE_IN_BYTES,
+  storageConfig,
+  VALID_UPLOADS_MIME_TYPES,
+} from "src/utils";
+import { Roles, User } from "src/common/decorators";
 import { CustomValidationPipe } from "src/common/pipes";
+import { ClearDataInterceptor } from "src/common/interceptors";
 
 import { UsersService } from "./users.service";
 import {
@@ -24,10 +32,7 @@ import {
   UpdateUserDto,
   UpdateUserSchema,
 } from "./dto";
-import { FileInterceptor } from "@nestjs/platform-express";
-import { diskStorage } from "multer";
-import { storageConfig } from "src/utils";
-import { ClearDataInterceptor } from "src/common/interceptors";
+import { UploadFileTypeValidator } from "src/common/validators";
 
 @Controller("users")
 export class UsersController {
@@ -51,19 +56,53 @@ export class UsersController {
     @Body()
     dto: UpdateUserDto,
     @UploadedFile(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 2 * 1024 * 1024 }),
-          // new FileTypeValidator({ fileType: /image\/(jpg|png|webp)$/ }),
-        ],
-        fileIsRequired: false,
-      })
+      new ParseFilePipeBuilder()
+        .addValidator(
+          new UploadFileTypeValidator({ fileType: VALID_UPLOADS_MIME_TYPES })
+        )
+        .addMaxSizeValidator({
+          maxSize: MAX_PROFILE_PICTURE_SIZE_IN_BYTES,
+        })
+        .build({
+          fileIsRequired: false,
+          errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+        })
     )
     avatar?: Express.Multer.File
   ) {
-    if (!avatar && !dto.username) throw new BadRequestException();
-
     return this.usersService.updateUser(id, dto, avatar);
+  }
+
+  @Put("me/avatar")
+  @UseInterceptors(
+    FileInterceptor("avatar", {
+      storage: diskStorage(storageConfig),
+    }),
+    ClearDataInterceptor
+  )
+  addOrChangeAvatar(
+    @User("id") id: number,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addValidator(
+          new UploadFileTypeValidator({ fileType: VALID_UPLOADS_MIME_TYPES })
+        )
+        .addMaxSizeValidator({
+          maxSize: MAX_PROFILE_PICTURE_SIZE_IN_BYTES,
+        })
+        .build({
+          fileIsRequired: true,
+          errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+        })
+    )
+    image: Express.Multer.File
+  ) {
+    return this.usersService.addOrChangeAvatar(id, image);
+  }
+
+  @Delete("me/avatar")
+  deleteAvatar(@User("id") id: number) {
+    return this.usersService.deleteAvatar(id);
   }
 
   @Post("admin")
