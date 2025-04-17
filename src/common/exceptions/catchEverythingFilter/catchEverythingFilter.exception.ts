@@ -7,16 +7,9 @@ import {
   HttpStatus,
 } from "@nestjs/common";
 
-import { AppService } from "src/common/services";
-
 @Catch()
-export class CatchEverythingFilter
-  extends AppService
-  implements ExceptionFilter
-{
-  constructor(private readonly httpAdapterHost: HttpAdapterHost) {
-    super();
-  }
+export class CatchEverythingFilter implements ExceptionFilter {
+  constructor(private readonly httpAdapterHost: HttpAdapterHost) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const { httpAdapter } = this.httpAdapterHost;
@@ -36,15 +29,6 @@ export class CatchEverythingFilter
 
     if (exception instanceof HttpException) {
       responseBody["message"] = exception.message;
-      responseBody["error"] = exception.getResponse();
-
-      if (
-        exception.cause &&
-        typeof exception.cause === "object" &&
-        "issues" in exception.cause
-      ) {
-        responseBody["cause"] = exception.cause["issues"];
-      }
     } else if (
       exception &&
       typeof exception === "object" &&
