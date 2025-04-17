@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -8,12 +9,15 @@ import { Repository } from "typeorm";
 import { UploadApiOptions } from "cloudinary";
 import { instanceToInstance } from "class-transformer";
 
+import { errorMessages } from "src/utils";
 import { InstanceService } from "src/common/services";
+import { UserDto } from "src/common/dto";
 
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 
 import { UserEntity } from "./user.entity";
 import { CreateUserDto, UpdateUserDto } from "./dto";
+import { Role } from "src/types";
 
 const avatarUploadOption: UploadApiOptions = {
   resource_type: "image",
@@ -52,22 +56,42 @@ export class UsersService extends InstanceService<UserEntity> {
     });
   }
 
+  async addUser(
+    userDto: Pick<UserDto, "email" | "password"> &
+      Partial<Pick<UserDto, "role">>
+  ) {
+    const { email, password, role } = userDto;
+
+    const isUserExist = await this.findOne({
+      where: { email },
+      withDeleted: true,
+    });
+
+    if (isUserExist) throw new ForbiddenException(errorMessages.email.exist);
+
+    const user = new UserEntity(userDto);
+    user.password = await this.createPassword(password);
+    if (role) user.role = role;
+    return this.save(user);
+  }
+
   async getUser(id: number) {
     const user = await this.findOneBy({ id });
     if (!user) throw new NotFoundException();
     return instanceToInstance(user);
   }
 
-  createUser(dto: CreateUserDto) {
-    return dto;
-  }
-
   async updateUser(
     id: number,
     { username }: UpdateUserDto,
-    avatar?: Express.Multer.File
+    avatar?: Express.Multer.File,
+    role?: Role
   ) {
     const user = await this.findUserById(id);
+
+    if (role === Role.Admin && user.role !== Role.User) {
+      throw new ForbiddenException();
+    }
 
     user.username = username;
 
@@ -106,5 +130,23 @@ export class UsersService extends InstanceService<UserEntity> {
     return instanceToInstance(updatedUser);
   }
 
-  deleteUser(id: number) {}
+  async createUser(userDto: CreateUserDto) {
+    const user = await this.addUser(userDto);
+    return instanceToInstance(user);
+  }
+
+  async deleteUser(id: number, admin: { id: number; role: Role }) {
+    if (id === admin.id) throw new ForbiddenException();
+
+    const user = await this.findUserById(id);
+    if (admin.role === Role.Admin && user.role !== Role.User) {
+      throw new ForbiddenException();
+    }
+
+    if (user.avatar) {
+      await this.cloudinaryService.delete(user.avatar);
+    }
+
+    return this.delete(user.id);
+  }
 }

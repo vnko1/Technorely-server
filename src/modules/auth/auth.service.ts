@@ -1,15 +1,9 @@
-import {
-  ForbiddenException,
-  Injectable,
-  UnauthorizedException,
-} from "@nestjs/common";
+import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService, JwtSignOptions } from "@nestjs/jwt";
-import * as bcrypt from "bcrypt";
-import { randomBytes } from "crypto";
 
 import { JwtPayloadType } from "src/types";
-import { errorMessages } from "src/utils";
+import { AppService } from "src/common/services";
 
 import { UsersService } from "../users/users.service";
 import { UserEntity } from "../users/user.entity";
@@ -17,12 +11,14 @@ import { UserEntity } from "../users/user.entity";
 import { AuthDto, ResetPasswordDto, VerifyPasswordDto } from "./dto";
 
 @Injectable()
-export class AuthService {
+export class AuthService extends AppService {
   constructor(
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService
-  ) {}
+  ) {
+    super();
+  }
 
   private generateTokens(payload: JwtPayloadType, opt?: JwtSignOptions) {
     return Promise.all([
@@ -33,19 +29,6 @@ export class AuthService {
         secret: this.configService.get<string>("jwt_refresh_secret"),
       }),
     ]);
-  }
-
-  private async checkPass(pass: string, hash: string) {
-    try {
-      return await bcrypt.compare(pass, hash);
-    } catch {
-      return false;
-    }
-  }
-
-  private async createPassword(pass: string) {
-    const salt = await bcrypt.genSalt();
-    return bcrypt.hash(pass, salt);
   }
 
   checkUser(id: number) {
@@ -70,18 +53,7 @@ export class AuthService {
   }
 
   async register(dto: AuthDto) {
-    const { email, password } = dto;
-
-    const isUserExist = await this.usersService.findOne({
-      where: { email },
-      withDeleted: true,
-    });
-
-    if (isUserExist) throw new ForbiddenException(errorMessages.email.exist);
-
-    const user = new UserEntity(dto);
-    user.password = await this.createPassword(password);
-    return this.usersService.save(user);
+    return this.usersService.addUser(dto);
   }
 
   login(user: Pick<UserEntity, "email" | "id" | "role">) {
@@ -92,7 +64,7 @@ export class AuthService {
   async resetPassword({ email }: ResetPasswordDto) {
     const user = await this.usersService.findOneBy({ email });
     if (!user) throw new UnauthorizedException();
-    user.passwordResetToken = randomBytes(20).toString("hex");
+    user.passwordResetToken = this.randomString();
     user.updatedAt = new Date().toISOString();
     const updatedUser = await this.usersService.save(user);
     return updatedUser.passwordResetToken;

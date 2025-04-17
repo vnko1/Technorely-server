@@ -20,3 +20,5 @@ export const UserSchema = z.object({
     required_error: errorMessages.role.required,
   }),
 });
+
+export type UserDto = z.infer<typeof UserSchema>;

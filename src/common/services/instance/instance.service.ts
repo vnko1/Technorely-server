@@ -8,11 +8,15 @@ import {
   SaveOptions,
 } from "typeorm";
 import { CriteriaType, EntityType, InstanceInterface } from "./instance.types";
+import { AppService } from "../app/app.service";
 
 export abstract class InstanceService<T extends ObjectLiteral>
+  extends AppService
   implements InstanceInterface<T>
 {
-  constructor(private readonly repository: Repository<T>) {}
+  constructor(private readonly repository: Repository<T>) {
+    super();
+  }
 
   findAll(options?: FindManyOptions) {
     return this.repository.find(options);

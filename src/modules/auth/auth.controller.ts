@@ -8,7 +8,7 @@ import {
   UseGuards,
   UsePipes,
 } from "@nestjs/common";
-import { CookieOptions, Response } from "express";
+import { Response } from "express";
 
 import { Public, User } from "src/common/decorators";
 import { CustomValidationPipe } from "src/common/pipes";
@@ -27,17 +27,13 @@ import {
   VerifyPasswordDto,
   VerifyPasswordSchema,
 } from "./dto";
+import { AppService } from "src/common/services";
 
 @Controller("auth")
-export class AuthController {
-  constructor(private readonly authService: AuthService) {}
-
-  private cookieOptions: CookieOptions = {
-    httpOnly: true,
-    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    sameSite: "none",
-    secure: true,
-  };
+export class AuthController extends AppService {
+  constructor(private readonly authService: AuthService) {
+    super();
+  }
 
   @Post("register")
   @Public()

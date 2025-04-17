@@ -1,10 +1,13 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
+  HttpCode,
   HttpStatus,
-  ParseFilePipeBuilder,
+  Param,
+  ParseIntPipe,
   Patch,
   Post,
   Put,
@@ -16,11 +19,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { diskStorage } from "multer";
 
 import { Role } from "src/types";
-import {
-  MAX_PROFILE_PICTURE_SIZE_IN_BYTES,
-  storageConfig,
-  VALID_UPLOADS_MIME_TYPES,
-} from "src/utils";
+import { storageConfig, uploadValidation } from "src/utils";
 import { Roles, User } from "src/common/decorators";
 import { CustomValidationPipe } from "src/common/pipes";
 import { ClearDataInterceptor } from "src/common/interceptors";
@@ -32,7 +31,6 @@ import {
   UpdateUserDto,
   UpdateUserSchema,
 } from "./dto";
-import { UploadFileTypeValidator } from "src/common/validators";
 
 @Controller("users")
 export class UsersController {
@@ -55,19 +53,7 @@ export class UsersController {
     @User("id") id: number,
     @Body()
     dto: UpdateUserDto,
-    @UploadedFile(
-      new ParseFilePipeBuilder()
-        .addValidator(
-          new UploadFileTypeValidator({ fileType: VALID_UPLOADS_MIME_TYPES })
-        )
-        .addMaxSizeValidator({
-          maxSize: MAX_PROFILE_PICTURE_SIZE_IN_BYTES,
-        })
-        .build({
-          fileIsRequired: false,
-          errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
-        })
-    )
+    @UploadedFile(uploadValidation())
     avatar?: Express.Multer.File
   ) {
     return this.usersService.updateUser(id, dto, avatar);
@@ -82,22 +68,10 @@ export class UsersController {
   )
   addOrChangeAvatar(
     @User("id") id: number,
-    @UploadedFile(
-      new ParseFilePipeBuilder()
-        .addValidator(
-          new UploadFileTypeValidator({ fileType: VALID_UPLOADS_MIME_TYPES })
-        )
-        .addMaxSizeValidator({
-          maxSize: MAX_PROFILE_PICTURE_SIZE_IN_BYTES,
-        })
-        .build({
-          fileIsRequired: true,
-          errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
-        })
-    )
-    image: Express.Multer.File
+    @UploadedFile(uploadValidation(true))
+    avatar: Express.Multer.File
   ) {
-    return this.usersService.addOrChangeAvatar(id, image);
+    return this.usersService.addOrChangeAvatar(id, avatar);
   }
 
   @Delete("me/avatar")
@@ -106,9 +80,43 @@ export class UsersController {
   }
 
   @Post("admin")
-  @Roles(Role.SuperAdmin)
+  @Roles(Role.SuperAdmin, Role.Admin)
   @UsePipes(new CustomValidationPipe<CreateUserDto>(CreateUserSchema))
-  createUser(@Body() dto: CreateUserDto) {
+  createUser(@User("role") role: Role, @Body() dto: CreateUserDto) {
+    if (role === Role.Admin && dto.role !== Role.User) {
+      throw new BadRequestException();
+    }
+
     return this.usersService.createUser(dto);
+  }
+
+  @Patch("admin/:id")
+  @Roles(Role.SuperAdmin, Role.Admin)
+  @UseInterceptors(
+    FileInterceptor("avatar", {
+      storage: diskStorage(storageConfig),
+    }),
+    ClearDataInterceptor
+  )
+  @UsePipes(new CustomValidationPipe<UpdateUserDto>(UpdateUserSchema))
+  updateUser(
+    @User("role") role: Role,
+    @Param("id", ParseIntPipe) id: number,
+    @Body()
+    dto: UpdateUserDto,
+    @UploadedFile(uploadValidation())
+    avatar?: Express.Multer.File
+  ) {
+    return this.usersService.updateUser(id, dto, avatar, role);
+  }
+
+  @Delete("admin/:id")
+  @Roles(Role.SuperAdmin, Role.Admin)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteUser(
+    @Param("id", ParseIntPipe) id: number,
+    @User() admin: { id: number; role: Role }
+  ) {
+    return this.usersService.deleteUser(id, admin);
   }
 }
