@@ -44,14 +44,11 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
 
       const savedCompany = await queryRunner.manager.save(company);
 
-      console.log(user.companies);
-
-      await queryRunner.manager.save(user);
       await queryRunner.commitTransaction();
 
       return instanceToPlain(savedCompany);
     } catch (error) {
-      console.log(error);
+      console.error(error);
       await queryRunner.rollbackTransaction();
     } finally {
       await queryRunner.release();

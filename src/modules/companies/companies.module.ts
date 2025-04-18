@@ -2,13 +2,17 @@ import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 
 import { CloudinaryModule } from "../cloudinary/cloudinary.module";
+import { UserEntity } from "../users/user.entity";
 
 import { CompanyEntity } from "./company.entity";
 import { CompaniesService } from "./companies.service";
 import { CompaniesController } from "./companies.controller";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([CompanyEntity]), CloudinaryModule],
+  imports: [
+    TypeOrmModule.forFeature([CompanyEntity, UserEntity]),
+    CloudinaryModule,
+  ],
   providers: [CompaniesService],
   controllers: [CompaniesController],
 })
