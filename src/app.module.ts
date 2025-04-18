@@ -23,7 +23,7 @@ import { JwtAuthGuard } from "./modules/auth/guards/jwt.guard";
         username: configService.get("db.username"),
         password: configService.get("db.password"),
         database: configService.get("db.name"),
-        ssl: true,
+        ssl: { ca: configService.get("db.ssl") },
         entities: [__dirname + "/modules/**/*.entity{.ts,.js}"],
         synchronize: true,
       }),

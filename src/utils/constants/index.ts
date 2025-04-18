@@ -14,6 +14,13 @@ export const errorMessages = {
   },
   role: { required: "Role is required" },
   username: { required: "Username is required" },
+  company: {
+    name: { required: "Name is required" },
+    service: { required: "Service is required" },
+    capital: { required: "Capital is required" },
+    price: { required: "Price is required" },
+    logo: { required: "Logo is required" },
+  },
 };
 
 export const passwordRegex =
