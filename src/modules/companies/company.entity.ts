@@ -33,6 +33,7 @@ export class CompanyEntity {
   @Column({ type: "varchar", nullable: true })
   deletedAt: string;
 
+  @Exclude()
   @ManyToOne(() => UserEntity, (user) => user.companies)
   user: UserEntity;
 

@@ -54,4 +54,23 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
       await queryRunner.release();
     }
   }
+
+  async getUserCompanies(id: number) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const user = await queryRunner.manager.findOne(UserEntity, {
+        where: { id },
+        relations: { companies: true },
+      });
+      return user;
+    } catch (error) {
+      console.error(error);
+      await queryRunner.rollbackTransaction();
+    } finally {
+      await queryRunner.release();
+    }
+  }
 }
