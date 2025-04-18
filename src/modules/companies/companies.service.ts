@@ -1,16 +1,20 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, Repository } from "typeorm";
 import { instanceToPlain } from "class-transformer";
 // import { UploadApiOptions } from "cloudinary";
 
 import { InstanceService } from "src/common/services";
+import { Role } from "src/types";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
+import { UserEntity } from "../users/user.entity";
 
 import { CompanyEntity } from "./company.entity";
 import { CreateCompanyDto } from "./dto";
-import { UserEntity } from "../users/user.entity";
-import { Role } from "src/types";
 
 // const companyUploadOption: UploadApiOptions = {
 //   resource_type: "image",
@@ -57,13 +61,15 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
   }
 
   async updateCompany(id: number, user: { id: number; role: Role }) {
+    const query =
+      user.role === Role.SuperAdmin ? { id } : { id, user: { id: user.id } };
+
     const company = await this.findOne({
-      where: {
-        id,
-        ...(user.role === Role.SuperAdmin ? { user: { id: user.id } } : {}),
-      },
+      where: query,
     });
-    console.log("🚀 ~ CompaniesService ~ updateCompany ~ company:", company);
+    if (!company) throw new NotFoundException();
+
+    return instanceToPlain(company);
   }
 
   async getUserCompanies(id: number) {
