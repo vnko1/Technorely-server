@@ -10,6 +10,7 @@ import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { CompanyEntity } from "./company.entity";
 import { CreateCompanyDto } from "./dto";
 import { UserEntity } from "../users/user.entity";
+import { Role } from "src/types";
 
 // const companyUploadOption: UploadApiOptions = {
 //   resource_type: "image",
@@ -53,6 +54,16 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async updateCompany(id: number, user: { id: number; role: Role }) {
+    const company = await this.findOne({
+      where: {
+        id,
+        ...(user.role === Role.SuperAdmin ? { user: { id: user.id } } : {}),
+      },
+    });
+    console.log("🚀 ~ CompaniesService ~ updateCompany ~ company:", company);
   }
 
   async getUserCompanies(id: number) {
