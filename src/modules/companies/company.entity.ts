@@ -40,5 +40,6 @@ export class CompanyEntity {
     if (!company) return;
     Object.entries(company).forEach(([key, value]) => (this[key] = value));
     this.createdAt = new Date().toISOString();
+    this.updatedAt = new Date().toISOString();
   }
 }
