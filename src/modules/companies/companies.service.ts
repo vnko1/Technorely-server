@@ -12,14 +12,15 @@ import { UploadApiOptions } from "cloudinary";
 import { startOfDay, endOfDay } from "date-fns";
 
 import { InstanceService } from "src/common/services";
-import { IUser, Role } from "src/types";
+import { IUser, LogsAction, Role } from "src/types";
+import { errorMessages } from "src/utils";
 
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
+import { LogsService } from "../logs/logs.service";
 import { UserEntity } from "../users/user.entity";
 
 import { CompanyEntity } from "./company.entity";
 import { CreateCompanyDto, CompaniesQueryDto, UpdateCompanyDto } from "./dto";
-import { errorMessages } from "src/utils";
 
 const companyUploadOption: UploadApiOptions = {
   resource_type: "image",
@@ -33,7 +34,8 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
     @InjectRepository(CompanyEntity)
     company: Repository<CompanyEntity>,
     private readonly cloudinaryService: CloudinaryService,
-    private dataSource: DataSource
+    private readonly dataSource: DataSource,
+    private readonly logsService: LogsService
   ) {
     super(company);
   }
@@ -50,11 +52,7 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
     return { url, pId: response.public_id };
   }
 
-  private async findCompany(
-    id: number,
-    user: Omit<IUser, "email">,
-    queryRunner: QueryRunner
-  ) {
+  private async findCompany(id: number, user: IUser, queryRunner: QueryRunner) {
     const company = await queryRunner.manager.findOne(CompanyEntity, {
       where: { id },
       relations: { user: true },
@@ -79,9 +77,20 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
       if (!user) throw new UnauthorizedException();
 
       const company = new CompanyEntity(companyDto);
-      company.user = user;
+      company.userId = id;
 
       await queryRunner.manager.save(company);
+
+      await this.logsService.log(
+        {
+          action: LogsAction.CREATE,
+          userId: user.id,
+          companyId: company.id,
+          entityName: "Company",
+          metadata: { reason: `${user.role} created ${company.name}` },
+        },
+        queryRunner
+      );
 
       await queryRunner.commitTransaction();
 
@@ -118,6 +127,18 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
       }
       company.updatedAt = new Date().toISOString();
       await queryRunner.manager.save(company);
+
+      await this.logsService.log(
+        {
+          action: LogsAction.UPDATE,
+          userId: user.id,
+          companyId: company.id,
+          entityName: "Company",
+          metadata: { reason: `${user.role} updated ${company.name}` },
+        },
+        queryRunner
+      );
+
       await queryRunner.commitTransaction();
       return instanceToPlain(company);
     } catch (error) {
@@ -149,6 +170,18 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
       company.updatedAt = new Date().toISOString();
 
       await queryRunner.manager.save(company);
+
+      await this.logsService.log(
+        {
+          action: LogsAction.UPDATE,
+          userId: user.id,
+          companyId: company.id,
+          entityName: "Company",
+          metadata: { reason: `${user.role} updated ${company.name} logo` },
+        },
+        queryRunner
+      );
+
       await queryRunner.commitTransaction();
       return instanceToPlain(company);
     } catch (error) {
@@ -176,6 +209,18 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
       company.updatedAt = new Date().toISOString();
 
       await queryRunner.manager.save(company);
+
+      await this.logsService.log(
+        {
+          action: LogsAction.DELETE,
+          userId: user.id,
+          companyId: company.id,
+          entityName: "Company",
+          metadata: { reason: `${user.role} deleted ${company.name} logo` },
+        },
+        queryRunner
+      );
+
       await queryRunner.commitTransaction();
 
       return instanceToPlain(company);
@@ -199,6 +244,17 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
       }
 
       await queryRunner.manager.delete(CompanyEntity, company.id);
+
+      await this.logsService.log(
+        {
+          action: LogsAction.DELETE,
+          userId: user.id,
+          companyId: company.id,
+          entityName: "Company",
+          metadata: { reason: `${user.role} deleted ${company.name}` },
+        },
+        queryRunner
+      );
       return await queryRunner.commitTransaction();
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -223,15 +279,17 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
 
   async getCompanies(query: CompaniesQueryDto, id?: number) {
     const {
-      name = "asc",
-      service = "asc",
+      name = "ASC",
+      service = "ASC",
       offset = 0,
       limit = 10,
-      price,
       capital,
       createdAt,
     } = query;
-    const queryParam: Record<string, unknown> = { price, capital };
+    const queryParam: Record<string, unknown> = {};
+    if (capital) {
+      queryParam.capital = capital;
+    }
 
     if (createdAt)
       queryParam.createdAt = Between(
@@ -240,12 +298,12 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
       );
     if (id) queryParam.user = { id };
 
-    const companies = await this.findAllAndCount({
+    const [companies, total] = await this.findAllAndCount({
       where: queryParam,
       order: { name, service },
       skip: offset,
       take: limit,
     });
-    return instanceToPlain(companies);
+    return { data: instanceToPlain(companies), meta: { total, offset, limit } };
   }
 }

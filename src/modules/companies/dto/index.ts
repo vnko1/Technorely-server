@@ -13,10 +13,9 @@ export const UpdateCompanySchema = CompanySchema.partial().refine(
 
 export const CompaniesQuerySchema = z
   .object({
-    name: z.enum(["asc", "desc"]).optional(),
-    service: z.enum(["asc", "desc"]).optional(),
-    capital: z.string().optional(),
-    price: z.number().optional(),
+    name: z.enum(["ASC", "DESC"]).optional(),
+    service: z.enum(["ASC", "ASC"]).optional(),
+    capital: z.coerce.number().optional(),
   })
   .merge(BaseQueySchema);
 

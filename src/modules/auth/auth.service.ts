@@ -3,9 +3,10 @@ import { ConfigService } from "@nestjs/config";
 import { JwtService, JwtSignOptions } from "@nestjs/jwt";
 import { DataSource } from "typeorm";
 
-import { JwtPayloadType } from "src/types";
+import { IUser, JwtPayloadType, LogsAction } from "src/types";
 import { AppService } from "src/common/services";
 
+import { LogsService } from "../logs/logs.service";
 import { UsersService } from "../users/users.service";
 import { UserEntity } from "../users/user.entity";
 
@@ -17,7 +18,8 @@ export class AuthService extends AppService {
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
-    private dataSource: DataSource
+    private readonly dataSource: DataSource,
+    private readonly logsService: LogsService
   ) {
     super();
   }
@@ -58,8 +60,15 @@ export class AuthService extends AppService {
     return this.usersService.addUser(dto);
   }
 
-  login(user: Pick<UserEntity, "email" | "id" | "role">) {
+  async login(user: IUser) {
     const payload = { email: user.email, sub: user.id, role: user.role };
+
+    await this.logsService.log({
+      action: LogsAction.LOGIN,
+      userId: user.id,
+      entityName: "User",
+    });
+
     return this.generateTokens(payload);
   }
 
@@ -75,6 +84,17 @@ export class AuthService extends AppService {
       user.passwordResetToken = this.randomString();
       user.updatedAt = new Date().toISOString();
       await queryRunner.manager.save(user);
+
+      await this.logsService.log(
+        {
+          action: LogsAction.UPDATE,
+          userId: user.id,
+          entityName: "User",
+          metadata: { reason: `${user.role} requested password change` },
+        },
+        queryRunner
+      );
+
       await queryRunner.commitTransaction();
       return user.passwordResetToken;
     } catch (error) {
@@ -99,6 +119,16 @@ export class AuthService extends AppService {
       user.passwordResetToken = null;
       user.updatedAt = new Date().toISOString();
 
+      await this.logsService.log(
+        {
+          action: LogsAction.LOGIN,
+          userId: user.id,
+          entityName: "User",
+          metadata: { reason: `${user.role} changed password` },
+        },
+        queryRunner
+      );
+
       await queryRunner.manager.save(user);
       return queryRunner.commitTransaction();
     } catch (error) {
@@ -107,5 +137,14 @@ export class AuthService extends AppService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  logout(user: IUser) {
+    return this.logsService.log({
+      action: LogsAction.LOGIN,
+      userId: user.id,
+      entityName: "User",
+      metadata: { reason: `${user.role} logout` },
+    });
   }
 }

@@ -36,10 +36,6 @@ export class UserEntity {
   updatedAt: string;
 
   @Exclude()
-  @Column({ type: "varchar", nullable: true })
-  deletedAt: string;
-
-  @Exclude()
   @OneToMany(() => CompanyEntity, (company) => company.user)
   companies: CompanyEntity[];
 

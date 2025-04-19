@@ -18,7 +18,7 @@ export const errorMessages = {
     name: { required: "Name is required" },
     service: { required: "Service is required" },
     capital: { required: "Capital is required" },
-    price: { required: "Price is required" },
+
     logo: { required: "Logo is required" },
     update: "At least one field must be provided",
   },

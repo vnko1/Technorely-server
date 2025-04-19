@@ -28,6 +28,7 @@ import {
   VerifyPasswordSchema,
 } from "./dto";
 import { AppService } from "src/common/services";
+import { IUser } from "src/types";
 
 @Controller("auth")
 export class AuthController extends AppService {
@@ -84,7 +85,8 @@ export class AuthController extends AppService {
   }
 
   @Post("logout")
-  logout(@Res({ passthrough: true }) res: Response) {
+  async logout(@User() user: IUser, @Res({ passthrough: true }) res: Response) {
+    await this.authService.logout(user);
     res
       .cookie(refreshToken, "", {
         httpOnly: true,

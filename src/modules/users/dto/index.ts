@@ -11,7 +11,6 @@ export const UpdateUserSchema = z.object({
 
 export const UserQuerySchema = z
   .object({
-    sort: z.enum(["asc", "desc"]).optional(),
     email: z.string().optional(),
     username: z.number().optional(),
   })

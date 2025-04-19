@@ -9,10 +9,7 @@ export const CompanySchema = z.object({
   service: z.string({
     required_error: errorMessages.company.service.required,
   }),
-  capital: z.string({
-    required_error: errorMessages.company.capital.required,
-  }),
-  price: z.number({
+  capital: z.number({
     required_error: errorMessages.company.capital.required,
   }),
 });
