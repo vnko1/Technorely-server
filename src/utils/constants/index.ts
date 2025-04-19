@@ -23,6 +23,7 @@ export const errorMessages = {
     update: "At least one field must be provided",
   },
   avatar: { deleted: "Avatar is already deleted" },
+  logo: { deleted: "Logo is already deleted" },
 };
 
 export const passwordRegex =

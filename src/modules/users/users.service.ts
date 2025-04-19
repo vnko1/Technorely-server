@@ -7,9 +7,9 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, QueryRunner, Repository } from "typeorm";
 import { UploadApiOptions } from "cloudinary";
-import { instanceToInstance } from "class-transformer";
+import { instanceToPlain } from "class-transformer";
 
-import { Role } from "src/types";
+import { IUser, Role } from "src/types";
 import { errorMessages } from "src/utils";
 
 import { InstanceService } from "src/common/services";
@@ -61,7 +61,7 @@ export class UsersService extends InstanceService<UserEntity> {
   async getUser(id: number) {
     const user = await this.findOneBy({ id });
     if (!user) throw new NotFoundException();
-    return instanceToInstance(user);
+    return instanceToPlain(user);
   }
 
   async addUser(
@@ -86,7 +86,7 @@ export class UsersService extends InstanceService<UserEntity> {
 
       await queryRunner.manager.save(user);
       await queryRunner.commitTransaction();
-      return instanceToInstance(user);
+      return instanceToPlain(user);
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
@@ -125,7 +125,7 @@ export class UsersService extends InstanceService<UserEntity> {
 
       await queryRunner.manager.save(user);
       await queryRunner.commitTransaction();
-      return instanceToInstance(user);
+      return instanceToPlain(user);
     } catch (error) {
       if (publicId) await this.cloudinaryService.delete(publicId);
       await queryRunner.rollbackTransaction();
@@ -145,13 +145,14 @@ export class UsersService extends InstanceService<UserEntity> {
       const user = await this.findUserById(id, queryRunner);
 
       const { url, pId } = await this.uploadAvatar(id, avatar);
-      user.avatar = url;
-      user.updatedAt = new Date().toISOString();
       publicId = pId;
+      user.avatar = url;
+
+      user.updatedAt = new Date().toISOString();
 
       await queryRunner.manager.save(user);
       await queryRunner.commitTransaction();
-      return instanceToInstance(user);
+      return instanceToPlain(user);
     } catch (error) {
       if (publicId) await this.cloudinaryService.delete(publicId);
       await queryRunner.rollbackTransaction();
@@ -178,7 +179,7 @@ export class UsersService extends InstanceService<UserEntity> {
 
       await queryRunner.manager.save(user);
       await queryRunner.commitTransaction();
-      return instanceToInstance(user);
+      return instanceToPlain(user);
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
@@ -187,7 +188,7 @@ export class UsersService extends InstanceService<UserEntity> {
     }
   }
 
-  async deleteUser(id: number, admin: { id: number; role: Role }) {
+  async deleteUser(id: number, admin: Omit<IUser, "email">) {
     if (id === admin.id) throw new ForbiddenException();
 
     const queryRunner = this.dataSource.createQueryRunner();

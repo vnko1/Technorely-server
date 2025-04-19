@@ -25,8 +25,9 @@ export type EntityType<T> = QueryDeepPartialEntity<T>;
 
 export interface InstanceInterface<T> {
   findAll(opt?: FindManyOptions): Promise<T[]>;
+  findAllAndCount(opt?: FindManyOptions): Promise<[T[], number]>;
   findAllBy(where: FindOptionsWhere<T> | FindOptionsWhere<T>[]): Promise<T[]>;
-  findAllAndCount(
+  findAllAndCountBy(
     where: FindOptionsWhere<T> | FindOptionsWhere<T>[]
   ): Promise<[T[], number]>;
   findOneBy(

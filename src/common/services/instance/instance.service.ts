@@ -21,6 +21,9 @@ export abstract class InstanceService<T extends ObjectLiteral>
   findAll(options?: FindManyOptions) {
     return this.repository.find(options);
   }
+  findAllAndCount(opt?: FindManyOptions) {
+    return this.repository.findAndCount(opt);
+  }
 
   findAllBy(where: FindOptionsWhere<T> | FindOptionsWhere<T>[]) {
     return this.repository.findBy(where);
@@ -34,7 +37,7 @@ export abstract class InstanceService<T extends ObjectLiteral>
     return this.repository.findOne(where);
   }
 
-  findAllAndCount(where: FindOptionsWhere<T> | FindOptionsWhere<T>[]) {
+  findAllAndCountBy(where: FindOptionsWhere<T> | FindOptionsWhere<T>[]) {
     return this.repository.findAndCountBy(where);
   }
 

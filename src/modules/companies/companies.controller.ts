@@ -1,21 +1,27 @@
 import {
   Body,
   Controller,
+  Delete,
+  HttpCode,
+  HttpStatus,
   Get,
   Param,
   ParseIntPipe,
   Patch,
   Post,
+  Put,
   UploadedFile,
   UseInterceptors,
   UsePipes,
+  Query,
 } from "@nestjs/common";
 import { diskStorage } from "multer";
 import { FileInterceptor } from "@nestjs/platform-express";
 
 import { storageConfig, uploadValidation } from "src/utils";
-import { Role } from "src/types";
-import { User } from "src/common/decorators";
+import { IUser, Role } from "src/types";
+
+import { Roles, User } from "src/common/decorators";
 import { ClearDataInterceptor } from "src/common/interceptors";
 import { CustomValidationPipe } from "src/common/pipes";
 
@@ -23,6 +29,8 @@ import { CompaniesService } from "./companies.service";
 import {
   CreateCompanyDto,
   CreateCompanySchema,
+  QueryDto,
+  QuerySchema,
   UpdateCompanyDto,
   UpdateCompanySchema,
 } from "./dto";
@@ -50,7 +58,7 @@ export class CompaniesController {
   @UsePipes(new CustomValidationPipe<UpdateCompanyDto>(UpdateCompanySchema))
   updateCompany(
     @Param("id", ParseIntPipe) id: number,
-    @User() user: { id: number; role: Role },
+    @User() user: IUser,
     @Body() companyDto: UpdateCompanyDto,
     @UploadedFile(uploadValidation())
     logo?: Express.Multer.File
@@ -58,8 +66,48 @@ export class CompaniesController {
     return this.companiesService.updateCompany(id, user, companyDto, logo);
   }
 
+  @Put("company/:id/logo")
+  @UseInterceptors(
+    FileInterceptor("logo", {
+      storage: diskStorage(storageConfig),
+    }),
+    ClearDataInterceptor
+  )
+  addOrChangeLogo(
+    @Param("id", ParseIntPipe) id: number,
+    @User() user: IUser,
+    @UploadedFile(uploadValidation(true))
+    logo: Express.Multer.File
+  ) {
+    return this.companiesService.addOrChangeCompanyLogo(id, user, logo);
+  }
+
+  @Delete("company/:id/logo")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteLogo(@Param("id", ParseIntPipe) id: number, @User() user: IUser) {
+    return this.companiesService.deleteCompanyLogo(id, user);
+  }
+
+  @Delete("company/:id")
+  deleteCompany(@Param("id", ParseIntPipe) id: number, @User() user: IUser) {
+    return this.companiesService.deleteCompany(id, user);
+  }
+
+  @Get("company/:id")
+  getCompany(@Param("id", ParseIntPipe) id: number, @User() user: IUser) {
+    return this.companiesService.getCompany(id, user);
+  }
+
   @Get()
-  getCompanies() {
-    return 1;
+  @Roles(Role.SuperAdmin, Role.Admin)
+  @UsePipes(new CustomValidationPipe<QueryDto>(QuerySchema, "query"))
+  getCompanies(@Query() query: QueryDto) {
+    return this.companiesService.getAllCompanies(query);
+  }
+
+  @Get("user")
+  @UsePipes(new CustomValidationPipe<QueryDto>(QuerySchema, "query"))
+  getUsersCompanies(@User("id") id: number, @Query() query: QueryDto) {
+    return this.companiesService.getUserCompanies(id, query);
   }
 }
