@@ -101,6 +101,7 @@ export class UsersService extends InstanceService<UserEntity> {
     avatar?: Express.Multer.File,
     role?: Role
   ) {
+    let publicId: string | null = null;
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -115,8 +116,9 @@ export class UsersService extends InstanceService<UserEntity> {
       user.username = username;
 
       if (avatar) {
-        const { url } = await this.uploadAvatar(id, avatar);
+        const { url, pId } = await this.uploadAvatar(id, avatar);
         user.avatar = url;
+        publicId = pId;
       }
 
       user.updatedAt = new Date().toISOString();
@@ -125,6 +127,7 @@ export class UsersService extends InstanceService<UserEntity> {
       await queryRunner.commitTransaction();
       return instanceToInstance(user);
     } catch (error) {
+      if (publicId) await this.cloudinaryService.delete(publicId);
       await queryRunner.rollbackTransaction();
       throw error;
     } finally {
@@ -133,6 +136,7 @@ export class UsersService extends InstanceService<UserEntity> {
   }
 
   async addOrChangeAvatar(id: number, avatar: Express.Multer.File) {
+    let publicId: string | null = null;
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -140,14 +144,16 @@ export class UsersService extends InstanceService<UserEntity> {
     try {
       const user = await this.findUserById(id, queryRunner);
 
-      const { url } = await this.uploadAvatar(id, avatar);
+      const { url, pId } = await this.uploadAvatar(id, avatar);
       user.avatar = url;
       user.updatedAt = new Date().toISOString();
+      publicId = pId;
 
       await queryRunner.manager.save(user);
       await queryRunner.commitTransaction();
       return instanceToInstance(user);
     } catch (error) {
+      if (publicId) await this.cloudinaryService.delete(publicId);
       await queryRunner.rollbackTransaction();
       throw error;
     } finally {
