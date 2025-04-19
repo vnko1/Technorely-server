@@ -9,6 +9,7 @@ import { LogsAction } from "src/types";
 import { LogsQueryDto } from "./dto";
 import { ActionLogEntity } from "./actionLog.entity";
 import { InstanceService } from "src/common/services";
+import { SocketGateway } from "../socket/socket.gateway";
 
 type Params = {
   action: LogsAction;
@@ -23,7 +24,8 @@ type Params = {
 export class ActionLogsService extends InstanceService<ActionLogEntity> {
   constructor(
     @InjectRepository(ActionLogEntity) logs: Repository<ActionLogEntity>,
-    private readonly dataSource: DataSource
+    private readonly dataSource: DataSource,
+    private readonly socket: SocketGateway
   ) {
     super(logs);
   }
@@ -37,7 +39,12 @@ export class ActionLogsService extends InstanceService<ActionLogEntity> {
       ...params,
       createdAt: new Date().toISOString(),
     });
-    return repo.save(log);
+
+    const savedLog = await repo.save(log);
+
+    this.socket.emitLog(savedLog);
+
+    return savedLog;
   }
 
   async getLogs(queryDto: LogsQueryDto) {
