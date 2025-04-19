@@ -11,6 +11,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   UploadedFile,
   UseInterceptors,
   UsePipes,
@@ -18,7 +19,7 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { diskStorage } from "multer";
 
-import { Role } from "src/types";
+import { IUser, Role } from "src/types";
 import { storageConfig, uploadValidation } from "src/utils";
 import { Roles, User } from "src/common/decorators";
 import { CustomValidationPipe } from "src/common/pipes";
@@ -30,11 +31,20 @@ import {
   CreateUserSchema,
   UpdateUserDto,
   UpdateUserSchema,
+  UserQueryDto,
+  UserQuerySchema,
 } from "./dto";
 
 @Controller("users")
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @Get()
+  @Roles(Role.SuperAdmin, Role.Admin)
+  @UsePipes(new CustomValidationPipe<UserQueryDto>(UserQuerySchema, "query"))
+  getAllUsers(@Query() query: UserQueryDto, @User() admin: IUser) {
+    return this.usersService.getAllUsers(admin, query);
+  }
 
   @Get("me")
   getMe(@User("id") id: number) {
@@ -113,10 +123,7 @@ export class UsersController {
   @Delete("admin/:id")
   @Roles(Role.SuperAdmin, Role.Admin)
   @HttpCode(HttpStatus.NO_CONTENT)
-  deleteUser(
-    @Param("id", ParseIntPipe) id: number,
-    @User() admin: { id: number; role: Role }
-  ) {
+  deleteUser(@Param("id", ParseIntPipe) id: number, @User() admin: IUser) {
     return this.usersService.deleteUser(id, admin);
   }
 }

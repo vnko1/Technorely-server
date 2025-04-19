@@ -29,8 +29,8 @@ import { CompaniesService } from "./companies.service";
 import {
   CreateCompanyDto,
   CreateCompanySchema,
-  QueryDto,
-  QuerySchema,
+  CompaniesQueryDto,
+  CompaniesQuerySchema,
   UpdateCompanyDto,
   UpdateCompanySchema,
 } from "./dto";
@@ -100,14 +100,18 @@ export class CompaniesController {
 
   @Get()
   @Roles(Role.SuperAdmin, Role.Admin)
-  @UsePipes(new CustomValidationPipe<QueryDto>(QuerySchema, "query"))
-  getCompanies(@Query() query: QueryDto) {
+  @UsePipes(
+    new CustomValidationPipe<CompaniesQueryDto>(CompaniesQuerySchema, "query")
+  )
+  getCompanies(@Query() query: CompaniesQueryDto) {
     return this.companiesService.getCompanies(query);
   }
 
   @Get("user")
-  @UsePipes(new CustomValidationPipe<QueryDto>(QuerySchema, "query"))
-  getUsersCompanies(@User("id") id: number, @Query() query: QueryDto) {
+  @UsePipes(
+    new CustomValidationPipe<CompaniesQueryDto>(CompaniesQuerySchema, "query")
+  )
+  getUsersCompanies(@User("id") id: number, @Query() query: CompaniesQueryDto) {
     return this.companiesService.getCompanies(query, id);
   }
 }
