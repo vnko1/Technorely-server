@@ -5,6 +5,7 @@ export const BaseQueySchema = z.object({
   limit: z.coerce.number().optional(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
+  sort: z.enum(["ASC", "DESC"]).optional(),
 });
 
 export type BaseQueryDto = z.infer<typeof BaseQueySchema>;

@@ -8,18 +8,19 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Between, DataSource, Not, QueryRunner, Repository } from "typeorm";
 import { UploadApiOptions } from "cloudinary";
 import { instanceToPlain } from "class-transformer";
+import { endOfDay, startOfDay } from "date-fns";
 
-import { IUser, Role } from "src/types";
+import { IUser, LogsAction, Role } from "src/types";
 import { errorMessages } from "src/utils";
 
 import { InstanceService } from "src/common/services";
 import { UserDto } from "src/common/dto";
 
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
+import { LogsService } from "../logs/logs.service";
 
 import { UserEntity } from "./user.entity";
 import { UpdateUserDto, UserQueryDto } from "./dto";
-import { endOfDay, startOfDay } from "date-fns";
 
 const avatarUploadOption: UploadApiOptions = {
   resource_type: "image",
@@ -33,7 +34,8 @@ export class UsersService extends InstanceService<UserEntity> {
     @InjectRepository(UserEntity)
     user: Repository<UserEntity>,
     private readonly cloudinaryService: CloudinaryService,
-    private dataSource: DataSource
+    private readonly dataSource: DataSource,
+    private readonly logsService: LogsService
   ) {
     super(user);
   }
@@ -86,6 +88,17 @@ export class UsersService extends InstanceService<UserEntity> {
       if (role) user.role = role;
 
       await queryRunner.manager.save(user);
+
+      await this.logsService.log(
+        {
+          action: LogsAction.CREATE,
+          userId: user.id,
+          entityName: "User",
+          metadata: { reason: `Created ${user.role}` },
+        },
+        queryRunner
+      );
+
       await queryRunner.commitTransaction();
       return instanceToPlain(user);
     } catch (error) {
@@ -125,6 +138,17 @@ export class UsersService extends InstanceService<UserEntity> {
       user.updatedAt = new Date().toISOString();
 
       await queryRunner.manager.save(user);
+
+      await this.logsService.log(
+        {
+          action: LogsAction.UPDATE,
+          userId: user.id,
+          entityName: "User",
+          metadata: { reason: `Updated ${user.role}` },
+        },
+        queryRunner
+      );
+
       await queryRunner.commitTransaction();
       return instanceToPlain(user);
     } catch (error) {
@@ -150,6 +174,16 @@ export class UsersService extends InstanceService<UserEntity> {
       user.avatar = url;
 
       user.updatedAt = new Date().toISOString();
+
+      await this.logsService.log(
+        {
+          action: LogsAction.UPDATE,
+          userId: user.id,
+          entityName: "User",
+          metadata: { reason: `Update ${user.role} avatar` },
+        },
+        queryRunner
+      );
 
       await queryRunner.manager.save(user);
       await queryRunner.commitTransaction();
@@ -177,6 +211,16 @@ export class UsersService extends InstanceService<UserEntity> {
       await this.cloudinaryService.delete(user.avatar);
       user.avatar = null;
       user.updatedAt = new Date().toISOString();
+
+      await this.logsService.log(
+        {
+          action: LogsAction.DELETE,
+          userId: user.id,
+          entityName: "User",
+          metadata: { reason: `Deleted ${user.role} avatar` },
+        },
+        queryRunner
+      );
 
       await queryRunner.manager.save(user);
       await queryRunner.commitTransaction();
@@ -207,6 +251,16 @@ export class UsersService extends InstanceService<UserEntity> {
         await this.cloudinaryService.delete(user.avatar);
       }
 
+      await this.logsService.log(
+        {
+          action: LogsAction.DELETE,
+          userId: user.id,
+          entityName: "User",
+          metadata: { reason: `Deleted ${user.role}` },
+        },
+        queryRunner
+      );
+
       await queryRunner.manager.delete(UserEntity, user.id);
       return await queryRunner.commitTransaction();
     } catch (error) {
@@ -217,17 +271,23 @@ export class UsersService extends InstanceService<UserEntity> {
     }
   }
 
-  async getAllUsers(admin: IUser, query: UserQueryDto) {
+  async getUsers(admin: IUser, query: UserQueryDto) {
     const {
       createdAt,
       updatedAt,
       offset = 0,
       limit = 10,
-      sort = "asc",
+      sort = "ASC",
       email,
       username,
     } = query;
-    const queryParam: Record<string, unknown> = { email, username };
+    const queryParam: Record<string, unknown> = {};
+    if (email) {
+      queryParam.email = email;
+    }
+    if (username) {
+      queryParam.username = username;
+    }
 
     if (createdAt) {
       queryParam.createdAt = Between(
@@ -251,12 +311,12 @@ export class UsersService extends InstanceService<UserEntity> {
       queryParam.role = Not(Role.SuperAdmin);
     }
 
-    const users = await this.findAllAndCount({
+    const [users, total] = await this.findAllAndCount({
       where: queryParam,
-      order: { createdAt: sort },
+      order: { id: sort },
       skip: offset,
       take: limit,
     });
-    return instanceToPlain(users);
+    return { date: instanceToPlain(users), meta: { total, offset, limit } };
   }
 }

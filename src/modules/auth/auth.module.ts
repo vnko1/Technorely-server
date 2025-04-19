@@ -11,6 +11,7 @@ import { AuthService } from "./auth.service";
 import { LocalStrategy } from "./strategies/local.strategy";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 import { JwtRefreshStrategy } from "./strategies/jwt-refresh.strategy";
+import { LogsModule } from "../logs/logs.module";
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { JwtRefreshStrategy } from "./strategies/jwt-refresh.strategy";
       }),
     }),
     PassportModule,
+    LogsModule,
     UsersModule,
   ],
   providers: [AuthService, LocalStrategy, JwtStrategy, JwtRefreshStrategy],

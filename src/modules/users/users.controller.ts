@@ -43,7 +43,7 @@ export class UsersController {
   @Roles(Role.SuperAdmin, Role.Admin)
   @UsePipes(new CustomValidationPipe<UserQueryDto>(UserQuerySchema, "query"))
   getAllUsers(@Query() query: UserQueryDto, @User() admin: IUser) {
-    return this.usersService.getAllUsers(admin, query);
+    return this.usersService.getUsers(admin, query);
   }
 
   @Get("me")
