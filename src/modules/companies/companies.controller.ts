@@ -102,12 +102,12 @@ export class CompaniesController {
   @Roles(Role.SuperAdmin, Role.Admin)
   @UsePipes(new CustomValidationPipe<QueryDto>(QuerySchema, "query"))
   getCompanies(@Query() query: QueryDto) {
-    return this.companiesService.getAllCompanies(query);
+    return this.companiesService.getCompanies(query);
   }
 
   @Get("user")
   @UsePipes(new CustomValidationPipe<QueryDto>(QuerySchema, "query"))
   getUsersCompanies(@User("id") id: number, @Query() query: QueryDto) {
-    return this.companiesService.getUserCompanies(id, query);
+    return this.companiesService.getCompanies(query, id);
   }
 }
