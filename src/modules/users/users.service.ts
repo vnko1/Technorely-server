@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, QueryRunner, Repository } from "typeorm";
+import { Between, DataSource, Not, QueryRunner, Repository } from "typeorm";
 import { UploadApiOptions } from "cloudinary";
 import { instanceToPlain } from "class-transformer";
 
@@ -18,7 +18,8 @@ import { UserDto } from "src/common/dto";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 
 import { UserEntity } from "./user.entity";
-import { UpdateUserDto } from "./dto";
+import { UpdateUserDto, UserQueryDto } from "./dto";
+import { endOfDay, startOfDay } from "date-fns";
 
 const avatarUploadOption: UploadApiOptions = {
   resource_type: "image",
@@ -188,7 +189,7 @@ export class UsersService extends InstanceService<UserEntity> {
     }
   }
 
-  async deleteUser(id: number, admin: Omit<IUser, "email">) {
+  async deleteUser(id: number, admin: IUser) {
     if (id === admin.id) throw new ForbiddenException();
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -214,5 +215,48 @@ export class UsersService extends InstanceService<UserEntity> {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async getAllUsers(admin: IUser, query: UserQueryDto) {
+    const {
+      createdAt,
+      updatedAt,
+      offset = 0,
+      limit = 10,
+      sort = "asc",
+      email,
+      username,
+    } = query;
+    const queryParam: Record<string, unknown> = { email, username };
+
+    if (createdAt) {
+      queryParam.createdAt = Between(
+        startOfDay(createdAt),
+        endOfDay(createdAt)
+      );
+    }
+
+    if (updatedAt) {
+      queryParam.updatedAt = Between(
+        startOfDay(updatedAt),
+        endOfDay(updatedAt)
+      );
+    }
+
+    if (admin.role === Role.Admin) {
+      queryParam.role = Role.User;
+    }
+
+    if (admin.role === Role.SuperAdmin) {
+      queryParam.role = Not(Role.SuperAdmin);
+    }
+
+    const users = await this.findAllAndCount({
+      where: queryParam,
+      order: { createdAt: sort },
+      skip: offset,
+      take: limit,
+    });
+    return instanceToPlain(users);
   }
 }

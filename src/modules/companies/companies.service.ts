@@ -18,7 +18,7 @@ import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { UserEntity } from "../users/user.entity";
 
 import { CompanyEntity } from "./company.entity";
-import { CreateCompanyDto, QueryDto, UpdateCompanyDto } from "./dto";
+import { CreateCompanyDto, CompaniesQueryDto, UpdateCompanyDto } from "./dto";
 import { errorMessages } from "src/utils";
 
 const companyUploadOption: UploadApiOptions = {
@@ -221,7 +221,7 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
     return instanceToPlain(company);
   }
 
-  async getCompanies(query: QueryDto, id?: number) {
+  async getCompanies(query: CompaniesQueryDto, id?: number) {
     const {
       name = "asc",
       service = "asc",
@@ -231,14 +231,17 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
       capital,
       createdAt,
     } = query;
-    const whereOpt: Record<string, unknown> = { price, capital };
+    const queryParam: Record<string, unknown> = { price, capital };
 
     if (createdAt)
-      whereOpt.createdAt = Between(startOfDay(createdAt), endOfDay(createdAt));
-    if (id) whereOpt.user = { id };
+      queryParam.createdAt = Between(
+        startOfDay(createdAt),
+        endOfDay(createdAt)
+      );
+    if (id) queryParam.user = { id };
 
     const companies = await this.findAllAndCount({
-      where: whereOpt,
+      where: queryParam,
       order: { name, service },
       skip: offset,
       take: limit,

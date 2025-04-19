@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CompanySchema } from "src/common/dto";
+import { CompanySchema, BaseQueySchema } from "src/common/dto";
 import { errorMessages } from "src/utils";
 
 export const CreateCompanySchema = CompanySchema;
@@ -11,16 +11,15 @@ export const UpdateCompanySchema = CompanySchema.partial().refine(
   }
 );
 
-export const QuerySchema = z.object({
-  name: z.enum(["asc", "desc"]).optional(),
-  service: z.enum(["asc", "desc"]).optional(),
-  capital: z.string().optional(),
-  price: z.number().optional(),
-  createdAt: z.coerce.date().optional(),
-  offset: z.coerce.number().optional(),
-  limit: z.coerce.number().optional(),
-});
+export const CompaniesQuerySchema = z
+  .object({
+    name: z.enum(["asc", "desc"]).optional(),
+    service: z.enum(["asc", "desc"]).optional(),
+    capital: z.string().optional(),
+    price: z.number().optional(),
+  })
+  .merge(BaseQueySchema);
 
 export type CreateCompanyDto = z.infer<typeof CreateCompanySchema>;
 export type UpdateCompanyDto = z.infer<typeof UpdateCompanySchema>;
-export type QueryDto = z.infer<typeof QuerySchema>;
+export type CompaniesQueryDto = z.infer<typeof CompaniesQuerySchema>;
