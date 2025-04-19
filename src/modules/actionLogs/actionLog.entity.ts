@@ -5,7 +5,6 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { Exclude } from "class-transformer";
 
 import { LogsAction } from "src/types";
 import { UserEntity } from "../users/user.entity";
@@ -34,12 +33,10 @@ export class ActionLogEntity {
   @Column({ type: "varchar", nullable: true })
   createdAt: string;
 
-  @Exclude()
   @ManyToOne(() => UserEntity)
   @JoinColumn({ name: "userId" })
   user: UserEntity;
 
-  @Exclude()
   @ManyToOne(() => CompanyEntity)
   @JoinColumn({ name: "companyId" })
   company: CompanyEntity;
