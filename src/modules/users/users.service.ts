@@ -33,9 +33,9 @@ export class UsersService extends InstanceService<UserEntity> {
   constructor(
     @InjectRepository(UserEntity)
     user: Repository<UserEntity>,
+    private readonly logsService: ActionLogsService,
     private readonly cloudinaryService: CloudinaryService,
-    private readonly dataSource: DataSource,
-    private readonly logsService: ActionLogsService
+    private readonly dataSource: DataSource
   ) {
     super(user);
   }
