@@ -51,11 +51,11 @@ export class CompaniesController {
   updateCompany(
     @Param("id", ParseIntPipe) id: number,
     @User() user: { id: number; role: Role },
-    @Body() compantDto: UpdateCompanyDto,
+    @Body() companyDto: UpdateCompanyDto,
     @UploadedFile(uploadValidation())
     logo?: Express.Multer.File
   ) {
-    return this.companiesService.updateCompany(id, user);
+    return this.companiesService.updateCompany(id, user, companyDto, logo);
   }
 
   @Get()

@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService, JwtSignOptions } from "@nestjs/jwt";
+import { DataSource } from "typeorm";
 
 import { JwtPayloadType } from "src/types";
 import { AppService } from "src/common/services";
@@ -15,7 +16,8 @@ export class AuthService extends AppService {
   constructor(
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
-    private readonly usersService: UsersService
+    private readonly usersService: UsersService,
+    private dataSource: DataSource
   ) {
     super();
   }
@@ -62,20 +64,48 @@ export class AuthService extends AppService {
   }
 
   async resetPassword({ email }: ResetPasswordDto) {
-    const user = await this.usersService.findOneBy({ email });
-    if (!user) throw new UnauthorizedException();
-    user.passwordResetToken = this.randomString();
-    user.updatedAt = new Date().toISOString();
-    const updatedUser = await this.usersService.save(user);
-    return updatedUser.passwordResetToken;
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const user = await queryRunner.manager.findOneBy(UserEntity, { email });
+      if (!user) throw new UnauthorizedException();
+
+      user.passwordResetToken = this.randomString();
+      user.updatedAt = new Date().toISOString();
+      await queryRunner.manager.save(user);
+      await queryRunner.commitTransaction();
+      return user.passwordResetToken;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async setPassword({ password, passwordResetToken }: VerifyPasswordDto) {
-    const user = await this.usersService.findOneBy({ passwordResetToken });
-    if (!user) throw new UnauthorizedException();
-    user.password = await this.createPassword(password);
-    user.passwordResetToken = null;
-    user.updatedAt = new Date().toISOString();
-    return this.usersService.save(user);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const user = await queryRunner.manager.findOneBy(UserEntity, {
+        passwordResetToken,
+      });
+      if (!user) throw new UnauthorizedException();
+
+      user.password = await this.createPassword(password);
+      user.passwordResetToken = null;
+      user.updatedAt = new Date().toISOString();
+
+      await queryRunner.manager.save(user);
+      return queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }
