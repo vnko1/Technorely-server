@@ -63,7 +63,7 @@ export class ActionLogsService extends InstanceService<ActionLogEntity> {
     const [logs, total] = await this.findAllAndCount({
       relations: { user: true, company: true },
       where: queryParam,
-      order: { id: sort.toUpperCase() === "DESC" ? "DESC" : "ASC" },
+      order: { id: sort },
       skip: offset,
       take: limit,
     });
