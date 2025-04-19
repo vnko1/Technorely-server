@@ -6,7 +6,7 @@ import { DataSource } from "typeorm";
 import { IUser, JwtPayloadType, LogsAction } from "src/types";
 import { AppService } from "src/common/services";
 
-import { LogsService } from "../logs/logs.service";
+import { ActionLogsService } from "../actionLogs/actionLogs.service";
 import { UsersService } from "../users/users.service";
 import { UserEntity } from "../users/user.entity";
 
@@ -19,7 +19,7 @@ export class AuthService extends AppService {
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
     private readonly dataSource: DataSource,
-    private readonly logsService: LogsService
+    private readonly logsService: ActionLogsService
   ) {
     super();
   }
