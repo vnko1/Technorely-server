@@ -79,7 +79,7 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
       if (!user) throw new UnauthorizedException();
 
       const company = new CompanyEntity(companyDto);
-      company.user = user;
+      company.userId = id;
 
       await queryRunner.manager.save(company);
 

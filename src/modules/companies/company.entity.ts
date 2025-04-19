@@ -1,4 +1,10 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from "typeorm";
 import { Exclude } from "class-transformer";
 import { UserEntity } from "../users/user.entity";
 import { CompanyDto } from "src/common/dto";
@@ -26,12 +32,14 @@ export class CompanyEntity {
   @Column({ type: "varchar", nullable: true })
   updatedAt: string;
 
-  @Exclude()
-  @Column({ type: "varchar", nullable: true })
-  deletedAt: string;
+  @Column()
+  userId: number;
 
   @Exclude()
-  @ManyToOne(() => UserEntity, (user) => user.companies)
+  @ManyToOne(() => UserEntity, (user) => user.companies, {
+    onDelete: "CASCADE",
+  })
+  @JoinColumn({ name: "userId" })
   user: UserEntity;
 
   constructor(company?: CompanyDto) {
