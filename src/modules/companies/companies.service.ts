@@ -221,7 +221,7 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
     return instanceToPlain(company);
   }
 
-  async getAllCompanies(query: QueryDto) {
+  async getCompanies(query: QueryDto, id?: number) {
     const {
       name = "asc",
       service = "asc",
@@ -232,34 +232,13 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
       createdAt,
     } = query;
     const whereOpt: Record<string, unknown> = { price, capital };
+
     if (createdAt)
       whereOpt.createdAt = Between(startOfDay(createdAt), endOfDay(createdAt));
+    if (id) whereOpt.user = { id };
 
     const companies = await this.findAllAndCount({
-      order: { name, service },
-      skip: offset,
-      take: limit,
       where: whereOpt,
-    });
-    return instanceToPlain(companies);
-  }
-
-  async getUserCompanies(id: number, query: QueryDto) {
-    const {
-      name = "asc",
-      service = "asc",
-      offset = 0,
-      limit = 10,
-      price,
-      capital,
-      createdAt,
-    } = query;
-    const whereOpt: Record<string, unknown> = { price, capital };
-    if (createdAt)
-      whereOpt.createdAt = Between(startOfDay(createdAt), endOfDay(createdAt));
-
-    const companies = await this.findAllAndCount({
-      where: { ...whereOpt, user: { id } },
       order: { name, service },
       skip: offset,
       take: limit,
