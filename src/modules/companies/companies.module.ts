@@ -2,7 +2,7 @@ import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 
 import { CloudinaryModule } from "../cloudinary/cloudinary.module";
-import { LogsModule } from "../logs/logs.module";
+import { ActionLogsModule } from "../actionLogs/actionLogs.module";
 import { UserEntity } from "../users/user.entity";
 
 import { CompanyEntity } from "./company.entity";
@@ -13,7 +13,7 @@ import { CompaniesController } from "./companies.controller";
   imports: [
     TypeOrmModule.forFeature([CompanyEntity, UserEntity]),
     CloudinaryModule,
-    LogsModule,
+    ActionLogsModule,
   ],
   providers: [CompaniesService],
   controllers: [CompaniesController],

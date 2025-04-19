@@ -17,7 +17,7 @@ import { InstanceService } from "src/common/services";
 import { UserDto } from "src/common/dto";
 
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
-import { LogsService } from "../logs/logs.service";
+import { ActionLogsService } from "../actionLogs/actionLogs.service";
 
 import { UserEntity } from "./user.entity";
 import { UpdateUserDto, UserQueryDto } from "./dto";
@@ -33,9 +33,9 @@ export class UsersService extends InstanceService<UserEntity> {
   constructor(
     @InjectRepository(UserEntity)
     user: Repository<UserEntity>,
+    private readonly logsService: ActionLogsService,
     private readonly cloudinaryService: CloudinaryService,
-    private readonly dataSource: DataSource,
-    private readonly logsService: LogsService
+    private readonly dataSource: DataSource
   ) {
     super(user);
   }

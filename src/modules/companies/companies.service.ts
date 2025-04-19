@@ -16,7 +16,7 @@ import { IUser, LogsAction, Role } from "src/types";
 import { errorMessages } from "src/utils";
 
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
-import { LogsService } from "../logs/logs.service";
+import { ActionLogsService } from "../actionLogs/actionLogs.service";
 import { UserEntity } from "../users/user.entity";
 
 import { CompanyEntity } from "./company.entity";
@@ -35,7 +35,7 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
     company: Repository<CompanyEntity>,
     private readonly cloudinaryService: CloudinaryService,
     private readonly dataSource: DataSource,
-    private readonly logsService: LogsService
+    private readonly logsService: ActionLogsService
   ) {
     super(company);
   }
