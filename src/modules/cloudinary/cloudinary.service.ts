@@ -26,6 +26,16 @@ export class CloudinaryService {
       .split("?")[0];
   }
 
+  private isValidUrl(string: string) {
+    try {
+      new URL(string);
+      return true;
+    } catch {
+      console.log(1);
+      return false;
+    }
+  }
+
   upload(
     filePath: string,
     options?: Partial<UploadApiOptions>
@@ -41,11 +51,14 @@ export class CloudinaryService {
   }
 
   async delete(
-    url: string,
+    filePath: string,
     options?: Partial<DeleteOptions>
   ): Promise<unknown> {
     try {
-      const publicId = this.getPublicIdFromUrl(url, options?.sliceValue);
+      const publicId = this.isValidUrl(filePath)
+        ? this.getPublicIdFromUrl(filePath, options?.sliceValue)
+        : filePath;
+
       return clouds.uploader.destroy(publicId, options);
     } catch (error) {
       if (error instanceof Error) {

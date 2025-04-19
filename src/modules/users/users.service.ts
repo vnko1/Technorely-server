@@ -5,19 +5,20 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { DataSource, QueryRunner, Repository } from "typeorm";
 import { UploadApiOptions } from "cloudinary";
-import { instanceToInstance } from "class-transformer";
+import { instanceToPlain } from "class-transformer";
 
+import { IUser, Role } from "src/types";
 import { errorMessages } from "src/utils";
+
 import { InstanceService } from "src/common/services";
 import { UserDto } from "src/common/dto";
 
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 
 import { UserEntity } from "./user.entity";
-import { CreateUserDto, UpdateUserDto } from "./dto";
-import { Role } from "src/types";
+import { UpdateUserDto } from "./dto";
 
 const avatarUploadOption: UploadApiOptions = {
   resource_type: "image",
@@ -30,18 +31,10 @@ export class UsersService extends InstanceService<UserEntity> {
   constructor(
     @InjectRepository(UserEntity)
     user: Repository<UserEntity>,
-    private readonly cloudinaryService: CloudinaryService
+    private readonly cloudinaryService: CloudinaryService,
+    private dataSource: DataSource
   ) {
     super(user);
-  }
-
-  private async findUserById(id: number) {
-    const user = await this.findOneBy({ id });
-    if (!user) {
-      throw new NotFoundException();
-    }
-
-    return user;
   }
 
   private async uploadAvatar(id: number, avatar: Express.Multer.File) {
@@ -49,11 +42,26 @@ export class UsersService extends InstanceService<UserEntity> {
       ...avatarUploadOption,
       public_id: id.toString(),
     });
-
-    return this.cloudinaryService.edit(response.secure_url, {
+    const url = this.cloudinaryService.edit(response.secure_url, {
       fetch_format: "auto",
       quality: "auto",
     });
+    return { url, pId: response.public_id };
+  }
+
+  private async findUserById(id: number, queryRunner: QueryRunner) {
+    const user = await queryRunner.manager.findOneBy(UserEntity, { id });
+    if (!user) {
+      throw new NotFoundException();
+    }
+
+    return user;
+  }
+
+  async getUser(id: number) {
+    const user = await this.findOneBy({ id });
+    if (!user) throw new NotFoundException();
+    return instanceToPlain(user);
   }
 
   async addUser(
@@ -61,7 +69,6 @@ export class UsersService extends InstanceService<UserEntity> {
       Partial<Pick<UserDto, "role">>
   ) {
     const { email, password, role } = userDto;
-
     const isUserExist = await this.findOne({
       where: { email },
       withDeleted: true,
@@ -69,16 +76,23 @@ export class UsersService extends InstanceService<UserEntity> {
 
     if (isUserExist) throw new ForbiddenException(errorMessages.email.exist);
 
-    const user = new UserEntity(userDto);
-    user.password = await this.createPassword(password);
-    if (role) user.role = role;
-    return this.save(user);
-  }
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const user = new UserEntity(userDto);
+      user.password = await this.createPassword(password);
+      if (role) user.role = role;
 
-  async getUser(id: number) {
-    const user = await this.findOneBy({ id });
-    if (!user) throw new NotFoundException();
-    return instanceToInstance(user);
+      await queryRunner.manager.save(user);
+      await queryRunner.commitTransaction();
+      return instanceToPlain(user);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async updateUser(
@@ -87,66 +101,118 @@ export class UsersService extends InstanceService<UserEntity> {
     avatar?: Express.Multer.File,
     role?: Role
   ) {
-    const user = await this.findUserById(id);
+    let publicId: string | null = null;
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    if (role === Role.Admin && user.role !== Role.User) {
-      throw new ForbiddenException();
+    try {
+      const user = await this.findUserById(id, queryRunner);
+
+      if (role === Role.Admin && user.role !== Role.User) {
+        throw new ForbiddenException();
+      }
+
+      user.username = username;
+
+      if (avatar) {
+        const { url, pId } = await this.uploadAvatar(id, avatar);
+        user.avatar = url;
+        publicId = pId;
+      }
+
+      user.updatedAt = new Date().toISOString();
+
+      await queryRunner.manager.save(user);
+      await queryRunner.commitTransaction();
+      return instanceToPlain(user);
+    } catch (error) {
+      if (publicId) await this.cloudinaryService.delete(publicId);
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-
-    user.username = username;
-
-    if (avatar) {
-      const avatarUrl = await this.uploadAvatar(id, avatar);
-      user.avatar = avatarUrl;
-    }
-
-    user.updatedAt = new Date().toISOString();
-
-    const updatedUser = await this.save(user);
-    return instanceToInstance(updatedUser);
   }
 
   async addOrChangeAvatar(id: number, avatar: Express.Multer.File) {
-    const user = await this.findUserById(id);
-    const avatarUrl = await this.uploadAvatar(id, avatar);
-    user.avatar = avatarUrl;
-    user.updatedAt = new Date().toISOString();
+    let publicId: string | null = null;
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const updatedUser = await this.save(user);
-    return instanceToInstance(updatedUser);
+    try {
+      const user = await this.findUserById(id, queryRunner);
+
+      const { url, pId } = await this.uploadAvatar(id, avatar);
+      publicId = pId;
+      user.avatar = url;
+
+      user.updatedAt = new Date().toISOString();
+
+      await queryRunner.manager.save(user);
+      await queryRunner.commitTransaction();
+      return instanceToPlain(user);
+    } catch (error) {
+      if (publicId) await this.cloudinaryService.delete(publicId);
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async deleteAvatar(id: number) {
-    const user = await this.findUserById(id);
-    if (!user.avatar) {
-      throw new BadRequestException("Avatar is already deleted");
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const user = await this.findUserById(id, queryRunner);
+
+      if (!user.avatar) {
+        throw new BadRequestException(errorMessages.avatar.deleted);
+      }
+
+      await this.cloudinaryService.delete(user.avatar);
+      user.avatar = null;
+      user.updatedAt = new Date().toISOString();
+
+      await queryRunner.manager.save(user);
+      await queryRunner.commitTransaction();
+      return instanceToPlain(user);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-
-    await this.cloudinaryService.delete(user.avatar);
-    user.avatar = null;
-    user.updatedAt = new Date().toISOString();
-
-    const updatedUser = await this.save(user);
-    return instanceToInstance(updatedUser);
   }
 
-  async createUser(userDto: CreateUserDto) {
-    const user = await this.addUser(userDto);
-    return instanceToInstance(user);
-  }
-
-  async deleteUser(id: number, admin: { id: number; role: Role }) {
+  async deleteUser(id: number, admin: Omit<IUser, "email">) {
     if (id === admin.id) throw new ForbiddenException();
 
-    const user = await this.findUserById(id);
-    if (admin.role === Role.Admin && user.role !== Role.User) {
-      throw new ForbiddenException();
-    }
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    if (user.avatar) {
-      await this.cloudinaryService.delete(user.avatar);
-    }
+    try {
+      const user = await this.findUserById(id, queryRunner);
 
-    return this.delete(user.id);
+      if (admin.role === Role.Admin && user.role !== Role.User) {
+        throw new ForbiddenException();
+      }
+
+      if (user.avatar) {
+        await this.cloudinaryService.delete(user.avatar);
+      }
+
+      await queryRunner.manager.delete(UserEntity, user.id);
+      return await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }

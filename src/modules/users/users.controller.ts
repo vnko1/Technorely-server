@@ -87,7 +87,7 @@ export class UsersController {
       throw new BadRequestException();
     }
 
-    return this.usersService.createUser(dto);
+    return this.usersService.addUser(dto);
   }
 
   @Patch("admin/:id")
