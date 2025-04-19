@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ForbiddenException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -33,6 +35,7 @@ export class UsersService extends InstanceService<UserEntity> {
   constructor(
     @InjectRepository(UserEntity)
     user: Repository<UserEntity>,
+    @Inject(forwardRef(() => ActionLogsService))
     private readonly logsService: ActionLogsService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly dataSource: DataSource
