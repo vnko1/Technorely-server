@@ -14,11 +14,8 @@ export class CompanyEntity {
   @Column()
   service: string;
 
-  @Column()
-  capital: string;
-
   @Column({ type: "int" })
-  price: number;
+  capital: number;
 
   @Column({ nullable: true, type: "varchar" })
   logo: string | null;

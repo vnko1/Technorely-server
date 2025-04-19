@@ -227,11 +227,10 @@ export class CompaniesService extends InstanceService<CompanyEntity> {
       service = "asc",
       offset = 0,
       limit = 10,
-      price,
       capital,
       createdAt,
     } = query;
-    const queryParam: Record<string, unknown> = { price, capital };
+    const queryParam: Record<string, unknown> = { capital };
 
     if (createdAt)
       queryParam.createdAt = Between(

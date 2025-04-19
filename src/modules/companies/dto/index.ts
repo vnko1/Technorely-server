@@ -15,8 +15,7 @@ export const CompaniesQuerySchema = z
   .object({
     name: z.enum(["asc", "desc"]).optional(),
     service: z.enum(["asc", "desc"]).optional(),
-    capital: z.string().optional(),
-    price: z.number().optional(),
+    capital: z.coerce.string().optional(),
   })
   .merge(BaseQueySchema);
 
